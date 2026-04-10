@@ -1,0 +1,363 @@
+\documentclass[11pt, a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[spanish, es-tabla]{babel}
+\usepackage{amsmath, amssymb, amsfonts}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, calc, decorations.pathreplacing, backgrounds, fit, matrix, curves}
+\usepackage{booktabs}
+\usepackage{geometry}
+\geometry{left=2cm, right=2cm, top=2.5cm, bottom=2.5cm}
+\usepackage{hyperref}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{mathpazo} 
+\usepackage{tcolorbox}
+\tcbuselibrary{skins}
+
+% --- PALETA DE COLORES CIENTÍFICA ---
+\definecolor{coreblue}{RGB}{20, 100, 180}
+\definecolor{corered}{RGB}{180, 40, 40}
+\definecolor{coregreen}{RGB}{40, 140, 60}
+\definecolor{coreorange}{RGB}{230, 120, 20}
+\definecolor{corepurple}{RGB}{110, 40, 160}
+\definecolor{coregray}{RGB}{100, 100, 100}
+\definecolor{lightbg}{RGB}{248, 249, 250}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=coreblue,
+    urlcolor=coreblue,
+    citecolor=coregreen
+}
+
+% Cajas para definiciones y ecuaciones críticas
+\newtcolorbox{mathdef}[1]{colback=lightbg, colframe=coreblue, fonttitle=\bfseries, title=#1, arc=2mm, boxrule=0.8pt}
+\newtcolorbox{highlightbox}{colback=coreorange!5, colframe=coreorange, arc=1mm, boxrule=0.5pt, left=2mm, right=2mm, top=2mm, bottom=2mm}
+
+\title{\vspace{-2cm}\huge\textbf{Fundamentos Matemáticos}\\ \Large\textit{Sistema inteligente para calcular las tensiones mecánicas de un rostro robótico mediante algoritmos genéticos (Caso EVA)}}
+\author{\normalsize Documentación del Modelo Algorítmico}
+\date{}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+
+\tableofcontents
+\vspace{1cm}
+
+\section{Formulación Matemática del Problema}
+
+\subsection{Definición del Espacio de Búsqueda}
+El problema consiste en modelar computacionalmente el rostro robótico para encontrar un vector de \textbf{tensiones mecánicas} $\textcolor{corered}{M}$ aplicadas sobre $n = 6$ actuadores focales. El objetivo es que la expresión facial física (el fenotipo) iguale a una expresión detectada por cámara.
+
+\begin{equation}
+\textcolor{corered}{M} = [\textcolor{corered}{m_1}, \textcolor{corered}{m_2}, \textcolor{corered}{m_3}, \textcolor{corered}{m_4}, \textcolor{corered}{m_5}, \textcolor{corered}{m_6}]
+\end{equation}
+Donde cada $\textcolor{corered}{m_i} \in [0.0, 1.0]$ representa la tensión normalizada del actuador $i$. Simultáneamente, el \textbf{vector objetivo} (capturado por el sistema \textit{MediaPipe}) se denota como:
+
+\begin{equation}
+\textcolor{coreblue}{T} = [\textcolor{coreblue}{t_1}, \textcolor{coreblue}{t_2}, \textcolor{coreblue}{t_3}, \textcolor{coreblue}{t_4}, \textcolor{coreblue}{t_5}, \textcolor{coreblue}{t_6}]
+\end{equation}
+
+\subsection{Mapeo de Actuadores a Blendshapes}
+La proyección de variables algorítmicas sobre la anatomía robótica sigue la siguiente formulación geométrica:
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{@{}llc@{}}
+        \toprule
+        \textbf{Componente Target} & \textbf{Origen MediaPipe} & \textbf{Mapeo Fisiológico (Actuador)} \\
+        \midrule
+        $\textcolor{coreblue}{t_1} = \text{jawOpen}$ & Apertura Mandibular & $\textcolor{corered}{m_1}$ — Mandibular \\
+        $\textcolor{coreblue}{t_2} = \text{mouthSmileLeft}$ & Sonrisa Izquierda & $\textcolor{corered}{m_2}$ — Cigomático izq. \\
+        $\textcolor{coreblue}{t_3} = \text{mouthSmileRight}$ & Sonrisa Derecha & $\textcolor{corered}{m_3}$ — Cigomático der. \\
+        $\textcolor{coreblue}{t_4} = \textcolor{coregreen}{1.0} - \text{eyeBlinkLeft}$ & Cierre de Ojo Izquierdo & $\textcolor{corered}{m_4}$ — Orbicular izq. \\
+        $\textcolor{coreblue}{t_5} = \textcolor{coregreen}{1.0} - \text{eyeBlinkRight}$ & Cierre de Ojo Derecho & $\textcolor{corered}{m_5}$ — Orbicular der. \\
+        $\textcolor{coreblue}{t_6} = \textcolor{coregreen}{1.0} - \text{browDownLeft}$ & Fruncimiento/Cejas & $\textcolor{corered}{m_6}$ — Frontal \\
+        \bottomrule
+    \end{tabular}
+    \caption{La inversión aditiva $(\textcolor{coregreen}{1.0} - x)$ alinea la semántica de compresión mecánica del motor frente a medidas asimétricas visuales.}
+\end{table}
+
+El objetivo estocástico del Algoritmo Genético (AG) se condensa en un paradigma simple de minimización euclidiana:
+\begin{mathdef}{Función Objetivo Primitiva}
+Encontrar el vector $M^*$ que resuelva:
+$$M^* = \arg\min_{\textcolor{corered}{M} \in [0,1]^6} E(\textcolor{corered}{M}, \textcolor{coreblue}{T})$$
+\end{mathdef}
+
+
+\section{Sistema de Codificación Binaria}
+
+Para habilitar operadores genéticos canónicos, las tensiones algebraicas $m_i$ se digitalizan en secuencias genotípicas de bits.
+
+\subsection{Ingeniería del Genotipo}
+Para el rango absoluto $R = 1.0 - 0.0 = 1.0$ y requiriendo un control microscópico asintótico (una resolución de la tensión $\delta = 10^{-3}$):
+
+\begin{equation}
+k = \lceil \log_2\left( \lfloor\frac{R}{\delta}\rfloor + 1 \right) \rceil = \lceil \log_2(1001) \rceil = \textcolor{corepurple}{10 \text{ bits por actuador}}
+\end{equation}
+
+El fenotipo es producto de $P_{\text{sistema}} = 2^{10} = \textcolor{corepurple}{1024}$ posiciones continuas evaluables, resultando en una resolución mecánica real de $\delta_{\text{real}} = \frac{1.0}{1023} \approx 0.000978$. La dimensión longitudinal del cromosoma es $L = n \times k = 60$.
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[font=\sffamily\small, bit/.style={draw, minimum width=0.5cm, minimum height=0.6cm}]
+        \foreach \x/\val in {0/1, 0.5/1, 1/0, 1.5/1,  2/1, 2.5/0,  3/0, 3.5/0, 4/1, 4.5/1} { \node[bit, fill=corered!10] at (\x,0) {\val}; }
+        \node[font=\bfseries] at (2.25, 0.6) {Motor $m_1$ (Cadena Decimal = 867)};
+        
+        \draw[decorate, decoration={brace, amplitude=5pt, mirror}, thick, corered] (-0.2,-0.4) -- (4.7,-0.4) node[midway, below=5pt] {$k = 10$ bits};
+        
+        \node[right=0.2cm of {(4.7, 0)}] {\dots (hasta llegar a $m_6$)};
+    \end{tikzpicture}
+    \caption{Topología atómica del cromosoma binario.}
+\end{figure}
+
+\subsection{Conversión Fenotípica Acumulativa}
+
+\begin{equation}
+\textcolor{corered}{m_i} = \underbrace{0.0}_{\text{Mínimo}} + \underbrace{\left( \sum_{j=0}^{k-1} b_j \cdot 2^{k-1-j} \right)}_{\text{Magnitud Entera ($d_i$)}} \cdot \underbrace{\frac{1.0}{2^{10}-1}}_{\text{Factor de escala}}
+\end{equation}
+
+
+\section{Generación de la Población Inicial}
+
+Para el fotograma inaugural, la matriz poblacional $P_0$ aloja $N$ individuos generados bajo distribución de Bernoulli no sesgada. Para cada genotipo $I_j$:
+
+\begin{equation}
+I_j = [b_1, b_2, \dots, b_{60}], \quad \textcolor{coreblue}{b_l \sim \text{Bernoulli}(0.5)} \quad \forall l \in \{1, \dots, 60\}
+\end{equation}
+
+Cada vector se decodifica en matrices de tensiones $M_j = [m_1^{(j)}, \dots, m_6^{(j)}]$ preparadas para evaluación morfológica. Parámetros recomendados: $N \in [30, 200]$, $L = 60$.
+
+
+\section{Función de Aptitud (Fitness)}
+
+\subsection{El Error Cuadrático Medio ($MSE$ o $E$)}
+\begin{equation}
+\textcolor{coreorange}{E}(M, T) = \frac{1}{n} \sum_{i=1}^{n} \left( \textcolor{coreblue}{t_i} - \textcolor{corered}{m_i} \right)^2 \label{eq:mse}
+\end{equation}
+
+Representa la penalización topológica. $E \in [0.0, 1.0]$. A menor $E$, mayor calcomanía anatómica posee el perfil $M$ respecto a $T$.
+
+\subsection{Transformación Hiperbólica ($F$)}
+El motor selectivo \textit{maximiza} variables generacionales. Mediante una transformación parabólica inversa, convertimos la métrica de castigo ($E$) en un mérito asintótico ($F$):
+
+\begin{equation}
+F(M, T) = \frac{\textcolor{coregreen}{1}}{\textcolor{coregreen}{1} + \textcolor{coreorange}{E(M, T)}} \quad \rightarrow \quad F \in (0, 1]
+\end{equation}
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[scale=0.9]
+        \draw[->, thick, coregray] (-0.2,0) -- (6,0) node[right] {Error $E$};
+        \draw[->, thick, coregray] (0,-0.2) -- (0,4) node[above] {Aptitud $F(E)$};
+        
+        \draw[domain=0:5.5, samples=100, smooth, thick, coreblue] plot (\x, {3/(1+\x)});
+        
+        \node[corered] at (0, 3) {$\bullet$};
+        \node[left] at (0, 3) {$F_{max} = 1.0$};
+        \draw[dashed, coregray] (0,3) -- (6,3);
+        
+        \node[align=center, text width=5cm] at (4,2) {La penalización por errores altos \\ decrece marginalmente.};
+    \end{tikzpicture}
+    \caption{Respuesta logarítmica-Inversa ($F$).}
+\end{figure}
+
+
+\section{Selección por Torneo}
+
+Por su eficiencia asintótica y mantenimiento de presión evolutiva heterogénea, prescindiremos de la Ruleta Clásica. En cambio, instrumentaremos subconjuntos competidores $S_k \subset P_g$ de tamaño \textcolor{coreblue}{$k_t = 3$}.
+
+\begin{equation}
+\text{Progenitor}_{\text{Electo}} = \arg\max_{I \in S_{k}} F(I)
+\end{equation}
+
+
+\section{Operador de Cruzamiento (Crossover)}
+
+\subsection{Recombinación de Punto Único}
+Con probabilidad de disparo $p_c = 0.8$, dos progenitores dividen su mapa cromosómico sobre un locus empírico uniforme $\textcolor{corered}{c \sim U\{1, L-1\}}$. 
+Si $c$ interseca una frontera decimal biológica (múltiplos de $10$), se transpasan grupos musculares consolidados. Si $c$ es intra-módulo, germinan híbridos morfológicos emergentes.
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[font=\small, 
+        bit/.style={draw, text width=0.2cm, inner sep=1pt, align=center}, 
+        cut/.style={very thick, dashed, coreorange}]
+        
+        \node at (-1.5, 0.5) {\textbf{P1}};
+        \foreach \x in {0,...,10} { \node[bit, fill=coreblue!20] at (\x*0.4, 0.5) {1}; }
+        \foreach \x in {11,...,15} { \node[bit, fill=coregreen!20] at (\x*0.4, 0.5) {0}; }
+        \draw[cut] (4.2, 0) -- (4.2, 1);
+        
+        \node at (-1.5, -0.5) {\textbf{P2}};
+        \foreach \x in {0,...,10} { \node[bit, fill=corered!20] at (\x*0.4, -0.5) {0}; }
+        \foreach \x in {11,...,15} { \node[bit, fill=coregray!20] at (\x*0.4, -0.5) {1}; }
+        
+        \draw[thick, ->] (2, -1) -- (2, -1.5);
+        
+        \node at (-1.5, -2) {\textbf{H1}};
+        \foreach \x in {0,...,10} { \node[bit, fill=coreblue!20] at (\x*0.4, -2) {1}; }
+        \foreach \x in {11,...,15} { \node[bit, fill=coregray!20] at (\x*0.4, -2) {1}; }
+        \draw[cut] (4.2, -2.5) -- (4.2, -1.5);
+        
+        \node at (-1.5, -3) {\textbf{H2}};
+        \foreach \x in {0,...,10} { \node[bit, fill=corered!20] at (\x*0.4, -3) {0}; }
+        \foreach \x in {11,...,15} { \node[bit, fill=coregreen!20] at (\x*0.4, -3) {0}; }
+        
+        \node[below=0.1cm of {(4.2,-3)}] {Punto asimétrico de corte $c=11$};
+    \end{tikzpicture}
+    \caption{Modelo visual de transmisión de sub-cadenas por cruza de un punto.}
+\end{figure}
+
+\subsection{El Operador Dual (2 Puntos)}
+Extiende el modelo utilizando $c_1 \sim U\{1, L-2\}$ y $c_2 \sim U\{c_1+1, L-1\}$. Generando recombinación tripartita de bloques genéticos centrales: $H_1 = P_1[1:c_1] \oplus P_2[c_1+1:c_2] \oplus P_1[c_2+1:L]$.
+
+
+\section{Mutación Bit-Flip}
+
+Ocurre bajo distribución aleatoria $r_l \sim U(0,1)$ sobre todo locus. Si $r_l < p_m$ (donde \textcolor{coreblue}{$p_m = 0.01$}), el bit bi-fásico $b_l$ invierte su valor axiomático ($1-b_l$).
+La media teórica de bits alterados por iteración es $\mathbb{E} = L \cdot p_m = 60 \cdot 0.01 = 0.6$ (control microscópico).
+
+\begin{highlightbox}
+\textbf{Dependencia Jerárquica del Bit (Posicionalidad)}
+
+El sistema digital acusa severidad de mutación variable. Dado el peso del bit ($2^{k-1-j}$):
+\begin{itemize}
+    \vspace{-0.2cm}\itemsep0em
+    \item \textbf{Bit MSB (Bit 1):} Alterará el fenotipo un $50\%$ ($\approx \frac{512}{1023}$). El músculo robótico dará un estirón sustancial.
+    \item \textbf{Bit LSB (Bit 10):} Alterará la tensión $0.1\%$ ($\frac{1}{1023}$). Produciendo únicamente una vibración infinitesimal, idónea para refinamiento final de sonrisa.
+\end{itemize}
+\end{highlightbox}
+
+
+\section{Poda, Reemplazo y Elitismo}
+
+Convivencia intergeneracional regida metodológicamente para prevenir el naufragio de máximos transitorios.
+Se aísla directamente el ápice adaptativo $e$:
+\begin{equation}
+\text{Elite}_g = \{I \in P_g : F(I) \text{ figura en el top } e\}
+\end{equation}
+
+La convergencia agrupa genomas en $P_{g+1}^{comb} = \text{Elite}_g \cup \text{Hijos}_g$. Seguidamente se ejerce la \textbf{Poda} limitante para conservar carga computacional $O(n \log n)$:
+\begin{equation}
+P_{g+1} = \text{OrdenDescendente}(P_{g+1}^{comb}, \text{por } F) [1:N]
+\end{equation}
+
+Si la tolerancia lo permite, los genotipos $I$ que exhiban $F(I) < F_{min}$ son purgados prematuramente para re-inyectar genes aleatorios a la reserva.
+
+
+\section{Condiciones de Término Temporales}
+
+Debido a que el EVA corre sincrónicamente al hardware ($33.3$ milisegundos a $30$ FPS), no puede dilatarse iterativamente.
+El modelo evolutivo quiebra (aplica termodinámica) bajo 3 axiomas:
+
+\begin{enumerate}
+    \item \textbf{Umbral Temporal G-Crítico:} $g \geq G_{max}$ (donde $G_{max} \approx 20$).
+    \item \textbf{Convergencia Tolerable:} $\textcolor{corered}{E}(M_{mejor}, T) < \epsilon$ (se alcanzó mímesis morfológica excelente, $\epsilon = 0.001$).
+    \item \textbf{Horizonte de Estancamiento:} $|F_{max}^{(g)} - F_{max}^{(g-w)}| < \sigma$. Tras $w$ ciclos nulos de variación genética, interrupción obligatoria.
+\end{enumerate}
+
+
+\section{Métricas de Estabilidad y Diversidad}
+
+Para analizar científicamente la robustez temporal del sistema, extraemos $S$ y $D$:
+
+\subsection{Estabilidad Cinética Inter-Fotograma ($S$)}
+Registra la inercia espasmódica. Si $S > 0.2$, el AG produce inestabilidad ("Tiembla"). Formulado como:
+\begin{equation}
+\textcolor{corepurple}{S^{(f)}} = \frac{1}{n} \sum_{i=1}^{n} \Big( m_i^{(f)} - m_i^{(f-1)} \Big)^2
+\end{equation}
+
+\subsection{Diversidad Genética de Hamming ($D$)}
+Previene la consanguinearidad algorítmica y el hundimiento en óptimos locales, mediando las distancias de todos los alelos:
+\begin{equation}
+D^{(g)} = \frac{2}{N(N-1)} \sum_{i=1}^{N-1} \sum_{j=i+1}^{N} \underbrace{\left( \sum_{l=1}^{L} \mathbb{1}[b_l^{(i)} \neq b_l^{(j)}] \right)}_{\text{Distancia de Hamming}}
+\end{equation}
+
+
+\section{Validación Cruzada Temporal (K-Fold)}
+
+El modelo verifica solidez (inmunidad ante peculiaridades asimétricas o deformidades fotográficas aleatorias de la cámara) fragmentando el lote histológico de una sesión operativa en $K$ periodos $D_K$. El tensor estadístico de fallas es:
+
+\begin{equation}
+\textcolor{corered}{E_{CV}} = \frac{1}{K} \sum_{k=1}^{K} \left( \frac{1}{|D_k|} \sum_{f \in D_k} E(M^{(f)}, T^{(f)}) \right)
+\end{equation}
+Donde una desviación $\sigma_{CV}$ excesiva demanda una rectificación perentoria de los márgenes estocásticos $N, p_c, p_m$.
+
+
+\section{Resumen Estructural y Parámetros}
+
+A continuación, la sinopsis modular del \textit{Pipeline Generacional} acoplada al renderizador \texttt{Pygame}:
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[
+        node default/.style={draw=coreblue, fill=lightbg, rounded corners, inner sep=6pt, text width=6cm, align=center, thick},
+        arrow/.style={-{Stealth[scale=1.2]}, thick, coreblue}
+    ]
+    
+    \node[node default] (cam) {\textbf{1. Adquisición Sensorial} \\ Fotograma RGB 320x240 @ 30FPS};
+    \node[node default, below=0.4cm of cam] (mp) {\textbf{2. MediaPipe Landmarker} \\ Localización de 52 Blendshapes};
+    \node[node default, below=0.4cm of mp] (tgt) {\textbf{3. Traducción Morfológica} \\ $T = [t_1, \dots, t_6]$};
+    
+    \node[node default, fill=corered!10, draw=corered, text width=7.5cm, below=0.6cm of tgt] (ga) {
+        \textbf{CÍCLO DEL ALGORITMO GENÉTICO (AG)}
+        \begin{itemize} \itemsep0em
+            \item Inicialización / Herencia $P_g$
+            \item Aptitud $F = \frac{1}{1+E}$
+            \item Selección Torneo $k=3$
+            \item Cruzamiento ($p_c = 0.8$)
+            \item Mutación ($p_m = 0.01$)
+            \item Elitismo + Poda
+        \end{itemize}
+        \textit{(Repite hasta $G_{max}$ o $\epsilon$ hit)}
+    };
+    
+    \node[node default, fill=coregreen!10, draw=coregreen, below=0.6cm of ga] (out) {\textbf{4. Decodificación y Renderizado} \\ Output $\to$ $M^*$ \textit{Pygame} \\ Commit a Base \textit{SQLite}};
+    
+    \draw[arrow] (cam) -- (mp);
+    \draw[arrow] (mp) -- (tgt);
+    \draw[arrow] (tgt) -- (ga);
+    \draw[arrow] (ga) -- (out);
+
+    \end{tikzpicture}
+    \caption{Canalización de eventos y acoplamiento neurosensible fotograma a fotograma.}
+\end{figure}
+
+\begin{table}[H]
+    \centering
+    \caption{Catálogo Fijo de Hiperparámetros de Sistema (Tabla \texttt{config\_ag} SQLite).}
+    \small
+    \begin{tabular}{@{}lllc@{}}
+        \toprule
+        \textbf{Magnitud} & \textbf{Símbolo} & \textbf{Espectro} & \textbf{Default} \\
+        \midrule
+        Dimensión Poblacional & $N$ & $30 \to 200$ & $50$ \\
+        Resolución Bits/Motor & $k$ & $8 \to 16$ & $10$ \\
+        Límite de Actuadores & $n$ & $\sim$ & $6$ \\
+        Cruza (Probabilidad) & $p_c$ & $0.5 \to 1.0$ & $0.8$ \\
+        Mutación (Probabilidad)& $p_m$ & $0.001 \to 0.05$ & $0.01$ \\
+        Presión Selectiva & $k_t$ & $2 \to 7$ & $3$ \\
+        Élites Heredadas & $e$ & $1 \to 5$ & $2$ \\
+        Barrera Temporal & $G_{max}$ & $5 \to 100$ & $20$ \\
+        Cota Error ($MSE$) & $\epsilon$ & $10^{-4} \to 10^{-2}$ & $0.001$ \\
+        Folds Val. Cruzada & $K$ & $3 \to 10$ & $5$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+
+\section{Referencias Académicas}
+\begin{enumerate} \small \itemsep-0.1em
+    \item Chen, B., et al. (2021). \textit{Smile Like You Mean It}. arXiv:2105.12724.
+    \item Faraj, Z., et al. (2020). \textit{Facially expressive humanoid robotic face}. HardwareX.
+    \item Holland, J. H. (1975). \textit{Adaptation in Natural and Artificial Systems}.
+    \item Ekman, P. (1978). \textit{Facial Action Coding System}.
+\end{enumerate}
+
+\end{document}

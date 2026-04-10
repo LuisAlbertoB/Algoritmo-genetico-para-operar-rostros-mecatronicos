@@ -1,0 +1,260 @@
+\documentclass[11pt, a4paper, twocolumn]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[spanish, es-tabla]{babel}
+\usepackage{amsmath, amssymb, amsfonts}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, calc, decorations.pathreplacing, backgrounds, fit, matrix}
+\usepackage{booktabs}
+\usepackage{geometry}
+\geometry{left=1.5cm, right=1.5cm, top=2.5cm, bottom=2.5cm, columnsep=0.8cm}
+\usepackage{hyperref}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{mathpazo} % Fuente científica elegante
+\usepackage{tcolorbox}
+\usepackage{balance}
+
+% --- PALETA DE COLORES CIENTÍFICA ---
+\definecolor{coreblue}{RGB}{20, 100, 180}
+\definecolor{corered}{RGB}{180, 40, 40}
+\definecolor{coregreen}{RGB}{40, 140, 60}
+\definecolor{coreorange}{RGB}{230, 120, 20}
+\definecolor{corepurple}{RGB}{110, 40, 160}
+\definecolor{coregray}{RGB}{100, 100, 100}
+\definecolor{lightbg}{RGB}{245, 247, 250}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=coreblue,
+    urlcolor=coreblue,
+    citecolor=coregreen
+}
+
+% Cajas para teoremas o notas importantes
+\newtcolorbox{mathdef}[1]{colback=lightbg,colframe=coreblue,fonttitle=\bfseries,title=#1, arc=0mm}
+
+\title{\vspace{-2cm}\huge\textbf{Cálculo Inteligente de Tensiones Mecánicas en un Rostro Robótico Biométrico mediante Algoritmos Genéticos (Caso EVA)}}
+\author{\normalsize \textbf{Propuesta Académica y Fundamentos Matemáticos} \\ \textit{Departamento de Robótica e Inteligencia Artificial}}
+\date{\vspace{-0.5cm}\normalsize Versión 1.0}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+
+\begin{abstract}
+\noindent La integración de robots en entornos colaborativos demanda el diseño de interfaces expresivas que superen la rigidez mecánica tradicional, combatiendo el fenómeno del ``valle inquietante''. Este artículo presenta la formulación matemática y computacional de un sistema basado en Algoritmos Genéticos (AG) para gobernar un rostro robótico blando. El modelo calcula en tiempo real las tensiones óptimas de seis actuadores focales mediante la minimización del Error Cuadrático Medio ($MSE$) con base en las coordenadas faciales de un usuario extraídas por visión artificial. Se detalla la codificación génica, el diseño de operadores probabilísticos, y los criterios de convergencia bajo restricciones de tiempo real. Este enfoque evade la intractabilidad analítica de la cinemática inversa en elastómeros.
+\vspace{0.3cm}\\
+\noindent \textbf{Palabras clave:} \textit{Robótica blanda, Algoritmos Genéticos, Mapeo Cinemático, MediaPipe, Expresiones Faciales, Interacción Humano-Robot.}
+\end{abstract}
+
+\section{Introducción}
+Actualmente, los robots asistentes colaboran cada vez más con humanos en asilos, hospitales y fábricas; sin embargo, sus limitadas capacidades mímicas proyectan rostros inexpresivos (rígidos). Esto instaura una severa barrera de \textbf{confianza interactiva}, entorpeciendo el vínculo empático \cite{Chen2021}. 
+
+Iniciativas como el robot EVA promueven el empleo de silicona anatómica operada mediante actuadores de cable (como músculos sintéticos). Paradójicamente, la flexibilidad de la silicona induce una dinámica topológica \textit{no lineal} altamente susceptible a la fricción térmica y al desgaste.
+Intentar formular esta interpolación analíticamente (Cinemática Inversa pura) genera deformaciones espasmódicas. 
+
+Frente al problema del ``valle inquietante'', este proyecto propone delegar la resolución motriz a un \textbf{Algoritmo Genético Canónico}, integrándolo a un ecosistema fotograma a fotograma para garantizar replicación gestual fluida. 
+
+\section{Formulación del Espacio Matemático}
+
+Para que la topología del rostro pueda ser manipulada algebraicamente, el problema de optimización requiere mapear el espacio de tensión mecánica con el espacio geométrico de \textit{blendshapes}.
+
+\subsection{Capa Semántica: Variables de Decisión}
+La gesticulación está parametrizada sobre la tensión fraccionaria de $n=6$ actuadores representados por el vector \textcolor{coreblue}{$M \in [0, 1]^n$}:
+$$
+M = [ \underbrace{\textcolor{corered}{m_1}}_{\text{Boca}}, \underbrace{\textcolor{coregreen}{m_2, m_3}}_{\text{Cigomáticos}}, \underbrace{\textcolor{coreorange}{m_4, m_5}}_{\text{Párpados}}, \underbrace{\textcolor{corepurple}{m_6}}_{\text{Cejas}} ]
+$$
+
+Donde un valor $\textcolor{coreblue}{m_i} = 1.0$ representa contracción motriz máxima, y $\textcolor{coreblue}{m_i} = 0.0$ define elongación total.
+
+\subsection{El Vector Objetivo Estocástico ($T$)}
+Simultáneamente a la evaluación fenotípica, el input sensorial de la cámara extrae $52$ blendshapes valiéndose de \textit{MediaPipe}. Redundan en el \textbf{Vector Objetivo}:
+$$
+T = [ \textcolor{corered}{t_1}, \textcolor{coregreen}{t_2}, \textcolor{coregreen}{t_3}, \textcolor{coreorange}{t_4}, \textcolor{coreorange}{t_5}, \textcolor{corepurple}{t_6} ]
+$$
+Para mantener simetría anatómica, ciertas señales capturadas bajo el esquema \textit{cierre ciliar} ($y$) son invertidas aditivamente: $\textcolor{coreorange}{t_{4,5}} = 1.0 - y_{\text{eyeBlink}}$ asimilando la semántica de la ``apertura'' del motor.
+
+\begin{mathdef}{Objetivo Integral (Minimización)}
+Reducir la distancia topológica $E(M, T)$ bajo una búsqueda adaptativa:
+\begin{equation}
+M^* = \underset{M \in [0,1]^6}{\arg\min} \left( E(M, T) \right)
+\end{equation}
+\end{mathdef}
+
+\section{Codificación y Genotipo}
+
+El núcleo algorítmico exige discretizar la varianza electromecánica de los actuadores en cadenas subyacentes legibles operativamente (cromosomas).
+
+\subsection{Ingeniería de Precisión}
+Sea $R = (b-a) = 1.0$ el rango absoluto de cada tensor, y requiriendo un control microscópico asintótico (una resolución analítica de $\delta = 10^{-3}$), el cómputo de discretización binaria por cada actuador adopta:
+
+\begin{equation}
+k = \lceil \log_2\underbrace{\left(\lfloor\frac{R}{\delta}\rfloor + 1\right)}_{\text{Puntos necesarios: } 1001} \rceil = \textcolor{coreblue}{10 \text{ bits}}
+\end{equation}
+
+Configurando un sistema capaz de generar $\mathcal{P} = 2^{10} = \textcolor{coreblue}{1024}$ micro-variaciones (típicamente impulsos PWM para micro-servos), logrando un control motriz con precisión  $\delta_{\text{real}} = 0.000978$. 
+
+\subsection{Estructura Cromosómica Lineal}
+Con concatenación aditiva temporal de todos los canales motores, la dimensión longitudinal del cromosoma $L$ engloba:
+
+$$ L = n \times k = 6 \times 10 = \textcolor{corered}{60 \text{ bits}} $$
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[font=\sffamily\small]
+        % Chromosome bar
+        \draw[thick, fill=corered!20] (0,0) rectangle (1.2,0.5) node[midway] {$m_1$};
+        \draw[thick, fill=coregreen!20] (1.2,0) rectangle (3.6,0.5) node[midway] {$m_2, m_3$};
+        \draw[thick, fill=coreorange!20] (3.6,0) rectangle (6.0,0.5) node[midway] {$m_4, m_5$};
+        \draw[thick, fill=corepurple!20] (6.0,0) rectangle (7.2,0.5) node[midway] {$m_6$};
+        
+        \draw[decorate, decoration={brace, amplitude=5pt}, thick] (0,-0.1) -- (7.2,-0.1) node[midway, below=5pt] {$L = 60$ loci binarios};
+        
+        \node[align=center] at (3.6, 1) {\textbf{Esquema del Genotipo Pleno}};
+    \end{tikzpicture}
+\end{figure}
+
+El proceso de \textbf{decodificación genotípica al fenotipo} mapea de una notación decimal asimétrica $d_i = \sum_{j=0}^{k-1} b_j \cdot 2^{k-1-j}$ al dominio escalar:
+
+\begin{equation}
+\textcolor{coreblue}{m_{i}(\text{fenotipo})} = \underbrace{a}_{\text{Min}} + \underbrace{\textcolor{corered}{d_i}}_{\text{Int}} \cdot \underbrace{\left(\frac{b-a}{2^k-1}\right)}_{ \text{Resolución escalar}}
+\end{equation}
+
+
+\section{Medición de Aptitud y Selección}
+
+La supervivencia de cada solución $I_j$ requiere evaluar severamente sus consecuencias estéticas virtuales mediante un esquema no paramétrico.
+
+\subsection{Error Cuadrático Medio ($E$)}
+\begin{equation}
+\textcolor{corered}{E}(M, T) = \frac{1}{n} \sum_{i=1}^{n} \left( \textcolor{coregreen}{\underbrace{t_i}_{\substack{\text{Cara}\\\text{Humana}}}} - \textcolor{coreblue}{\underbrace{m_i}_{\substack{\text{Tensión}\\\text{Robot}}}} \right)^2 \label{eq:mse}
+\end{equation}
+Es rígidamente no negativo y parabólicamente estricto al sobre-castigar discrepancias abismales ($> 0.5$).
+
+\subsection{Inversión Asintótica Radial ($F$)}
+Para que la selección proceda con un axioma de ``maximizador evolutivo'' ($F \to 1$), se asimila la \autoref{eq:mse} a una transformación hiperbólica:
+\begin{equation}
+    F(M, T) = \frac{\textcolor{black}{1}}{\textcolor{black}{1} + \textcolor{corered}{E(M,T)}}
+\end{equation}
+La cual garantiza asimptóticamente que $\forall E > 0 \rightarrow F \in (0,1]$.
+
+\subsection{Torneo Estocástico}
+Durante la proliferación $g \to g+1$, evitamos ponderaciones excesivamente selectivas (Ruleta) adoptando Torneos de rango constante ($k_t = 3$). Esto mantiene una exploración topológica heterogénea.
+
+$$ \text{Padre} = \arg \max_{X \in \Omega_3} F(X) $$
+
+
+\section{Operadores Evolutivos}
+
+\subsection{Recombinación Macromolecular}
+Mediante \textit{Cruza de Un Punto} con probabilidad ($p_c = 0.8$), se disectan los axiomas parentales. Si el locus $c \in \{10,20,30,40,50\}$, el intercambio trasfiere músculos intactos íntegros. Si $c \notin \text{múltiplo}(10)$, ocurre hibridación intratensional, proveyendo al fenotipo de expresiones inéditas.
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[font=\tiny]
+        \node (p1) [draw, fill=coreblue!10, text width=6.5cm, align=center, inner sep=2pt] {$1101100011 \dots \textcolor{corered}{\boldsymbol{|}} \dots 1100000110$};
+        \node (p2) [draw, fill=coregreen!10, text width=6.5cm, align=center, inner sep=2pt, below=0.2cm of p1] {$0010011100 \dots \textcolor{corered}{\boldsymbol{|}} \dots 0011111001$};
+        \node (cross) [right=0.2cm of p1, yshift=-0.3cm] {\Large $\xrightarrow{\text{Cruza at } c}$};
+        
+        \node (h1) [draw, fill=coreblue!10, text width=6.5cm, align=center, inner sep=2pt, below=0.8cm of p1] {$1101100011 \dots \textcolor{coregreen}{\boldsymbol{|}} \dots 0011111001$};
+        \node (h2) [draw, fill=coregreen!10, text width=6.5cm, align=center, inner sep=2pt, below=0.2cm of h1] {$0010011100 \dots \textcolor{coreblue}{\boldsymbol{|}} \dots 1100000110$};
+        
+        \draw[<->, thick, corered] (p1.south east) ++(-2.0, 0) -- ++(0,-0.6);
+        \draw[->, dashed, thick] (p2.-10) -- (h1.10);
+        \draw[->, dashed, thick] (p1.-10) -- (h2.10);
+    \end{tikzpicture}
+    \caption{Cruza de un punto.}
+\end{figure}
+
+\subsection{Mutación de Posición Ponderada}
+Con probabilidad baja ($p_m = 0.01$), el sistema invierte un bit aleatorio. Gracias al peso exponencial de la cadena binaria (Base $2$), el impacto motriz de la mutación es altamente contextual:
+
+\begin{table}[H]
+    \centering
+    \footnotesize
+    \begin{tabular}{@{}llcc@{}}
+        \toprule
+        \textbf{Posición del Bit} & \textbf{Peso ($2^j$)} & $\Delta m_{\text{max}}$ & \textbf{Efecto}\\
+        \midrule
+        Locus extremo MSB & 512 & $\approx 50.0\%$ & Espasmo / Exploración \\
+        Locus central & 32 & $\approx 3.1\%$ & Ajuste gestual fino \\
+        Locus extremo LSB & 1 & $\approx 0.1\%$ & Micro-pulsación \\
+        \bottomrule
+    \end{tabular}
+    \caption{Impacto semántico de la mutación por inyección de error.}
+\end{table}
+
+La mutación dota a la población de gradientes macro y micro evolutivos en paralelo.
+
+
+\section{Condiciones de Término y Estabilidad}
+
+Para operar sincrónicamente el motor gráfico del gemelo digital y los servos físicos, la convergencia algorítmica obedece severas delimitaciones estocásticas ($T_{eval} < 33ms \propto 30FPS$).
+
+\subsection{Restricciones de Interrupción Fotogramática}
+Se estipuló un límite estricto superior: $g_{eval} \leq G_{max} = 20$. Si, dentro del margen, la diferencia de aptitud cae en un estancamiento horizontal ( $\Delta F(g, g-w) < \sigma = 10^{-4}$ ), el ciclo colapsa reteniendo la \textit{élite presuntiva}.
+
+\subsection{Metricas Diagnósticas}
+Se incorporaron dos indicadores empíricos críticos para validación temporal post-sesión:
+
+\noindent\textbf{1. Estabilidad Temporal Genotípica:} Penaliza vectores motrices altamente variables entre frames consecuentes $f$:
+$$ \textcolor{coreblue}{S^{(f)}} = \frac{1}{n} \sum_{i=1}^{n} \left( \textcolor{corered}{m_i^{(f)}} - \textcolor{coregreen}{m_i^{(f-1)}} \right)^2 $$
+
+\noindent\textbf{2. Diversidad Cromosómica ($D$):} Evita el colapso alométrico prematuro evaluando las Distancias de Hamming transversales de todos los miembros poblacionales $N$:
+$$
+\textcolor{corepurple}{D^{(g)}} = \frac{2}{N(N-1)} \sum_{i<j} \left( \sum_{l=1}^{L} \mathbb{1}_{b_l^{(i)} \neq b_l^{(j)}} \right) 
+$$
+
+Valores normalizados divergentes de $D_{norm} \in [0.2, 0.4]$ auguran mala calibración térmica del GA.
+
+\section{Independencia Estática Arquitectural}
+Con miras a preservar modularidad de software-robótico escalable, el proyecto aísla la estructura de las variables de entorno en el micro-clúster relacional SQLite (\texttt{eva\_conocimiento.db}):
+
+\begin{itemize}
+    \item \texttt{robot\_modelo}: Restricciones de $k$ y $N_m$.
+    \item \texttt{mapeo\_cinematico}: Conversiones matriz a monitor.
+    \item \texttt{parametros\_material}: Constantes elásticas $\vec{e}$.
+\end{itemize}
+
+El motor Genético extrae topografías en tiempo real \textbf{sin estar pre-codificado rígidamente (hardcoded)}. Si el robot material escala de 6 a 12 cuerdas motrices subyacentes, la actualización atañe únicamente alterar columnas de SQLite sin alterar una sola línea de lógica $O(n\log n)$ evolutiva. 
+
+Para refutar sesgos gestuales por sesgo del paciente, la métrica final somete a toda la recolección estática al esquema \textbf{Validación Cruzada $K$-Fold} ($K=5$). 
+
+\section{Conclusión}
+El enfoque heurístico del Algoritmo Genético, suplementado por transformaciones de visión por computadora vectorial, es inherentemente idóneo para confrontar el desafío de calibrar sistemas robóticos sub-rígidos (silicona y poliuretanos). El robusto diseño de la codificación lineal, conjugado con arquitecturas estáticas SQLite desacopladas, promete abolir la asincronía robótica promoviendo imitaciones antropomórficas convincentes con baja latencia y alta fidelidad interactiva, abriendo vías viables a la robótica social escalable.
+
+\balance
+
+\begin{thebibliography}{9}
+
+\bibitem{Chen2021}
+Chen, B., Hu, Y., Li, L., Cummings, S., \& Lipson, H. (2021).
+\textit{Smile Like You Mean It: Driving Animatronic Robotic Face with Learned Models.} arXiv preprint arXiv:2105.12724.
+
+\bibitem{Faraj2020}
+Faraj, Z., Selamet, M., Morales, C., Torres, P., Hossain, M., Chen, B., \& Lipson, H. (2020).
+\textit{Facially expressive humanoid robotic face.} HardwareX.
+
+\bibitem{Holland1975}
+Holland, J. H. (1975).
+\textit{Adaptation in Natural and Artificial Systems.} University of Michigan Press.
+
+\bibitem{Goldberg1989}
+Goldberg, D. E. (1989).
+\textit{Genetic Algorithms in Search, Optimization, and Machine Learning.} Addison-Wesley.
+
+\bibitem{Ekman1978}
+Ekman, P., \& Friesen, W. V. (1978).
+\textit{Facial Action Coding System.} Consulting Psychologists Press.
+
+\bibitem{MediaPipe2019}
+Lugaresi, C., et al. (2019).
+\textit{MediaPipe: A Framework for Building Perception Pipelines.} arXiv preprint arXiv:1906.08172.
+
+\end{thebibliography}
+
+\end{document}
