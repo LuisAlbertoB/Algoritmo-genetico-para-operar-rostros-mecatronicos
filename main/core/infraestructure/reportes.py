@@ -28,10 +28,10 @@ except ImportError:
     MATPLOTLIB_DISPONIBLE = False
 
 
-# Ruta de salida para los reportes
+# Ruta de salida para los reportes (dentro de main/ para portabilidad)
 _MODULO_DIR = os.path.dirname(os.path.abspath(__file__))
-_PROYECTO_DIR = os.path.dirname(os.path.dirname(os.path.dirname(_MODULO_DIR)))
-RUTA_REPORTES = os.path.join(_PROYECTO_DIR, 'temp', 'reportes')
+_MAIN_DIR = os.path.dirname(os.path.dirname(_MODULO_DIR))  # .../main/
+RUTA_REPORTES = os.path.join(_MAIN_DIR, 'output', 'reportes')
 
 
 class GeneradorReportes:

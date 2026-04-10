@@ -2,3 +2,6 @@ opencv-python
 mediapipe
 pygame
 matplotlib
+numpy
+pandas
+scikit-learn
